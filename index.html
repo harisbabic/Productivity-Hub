@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity Hub</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Productivity Hub</h1>
+    </header>
+    <nav role="navigation">
+        <button id="emails-tab" aria-controls="emails" aria-selected="true">Emails</button>
+        <button id="contacts-tab" aria-controls="contacts" aria-selected="false">Contacts</button>
+        <button id="projects-tab" aria-controls="projects" aria-selected="false">Projects</button>
+        <button id="notes-tab" aria-controls="notes" aria-selected="false">Notes</button>
+    </nav>
+    <main>
+        <section id="emails" class="tab-content active" role="region" aria-labelledby="emails-tab">
+            <h2>Emails</h2>
+            <form id="email-form">
+                <label for="email-title">Title:</label>
+                <input type="text" id="email-title" placeholder="Title" required>
+                <label for="email-category">Category:</label>
+                <input type="text" id="email-category" placeholder="Category">
+                <label for="email-template">Template:</label>
+                <textarea id="email-template" placeholder="e.g., Hello {name}, ..." required></textarea>
+                <button type="submit">Save Template</button>
+            </form>
+            <ul id="email-list" aria-live="polite"></ul>
+        </section>
+        <section id="contacts" class="tab-content" role="region" aria-labelledby="contacts-tab">
+            <h2>Contacts</h2>
+            <form id="contact-form">
+                <label for="contact-name">Name:</label>
+                <input type="text" id="contact-name" placeholder="Name" required>
+                <label for="contact-email">Email:</label>
+                <input type="email" id="contact-email" placeholder="Email">
+                <label for="contact-phone">Phone:</label>
+                <input type="tel" id="contact-phone" placeholder="Phone">
+                <label for="contact-address">Address:</label>
+                <input type="text" id="contact-address" placeholder="Address">
+                <button type="submit">Add Contact</button>
+            </form>
+            <input type="text" id="contact-search" placeholder="Search contacts by name">
+            <ul id="contact-list" aria-live="polite"></ul>
+        </section>
+        <section id="projects" class="tab-content" role="region" aria-labelledby="projects-tab">
+            <h2>Projects</h2>
+            <form id="project-form">
+                <label for="project-name">Name:</label>
+                <input type="text" id="project-name" placeholder="Project Name" required>
+                <label for="project-description">Description:</label>
+                <textarea id="project-description" placeholder="Description"></textarea>
+                <label for="project-start">Start Date:</label>
+                <input type="date" id="project-start">
+                <label for="project-contact">Link to Contact:</label>
+                <select id="project-contact">
+                    <option value="">None</option>
+                </select>
+                <button type="submit">Add Project</button>
+            </form>
+            <ul id="project-list" aria-live="polite"></ul>
+        </section>
+        <section id="notes" class="tab-content" role="region" aria-labelledby="notes-tab">
+            <h2>Notes</h2>
+            <form id="note-form">
+                <label for="note-title">Title:</label>
+                <input type="text" id="note-title" placeholder="Title" required>
+                <label for="note-content">Content:</label>
+                <textarea id="note-content" placeholder="Content" required></textarea>
+                <label for="note-contact">Link to Contact:</label>
+                <select id="note-contact">
+                    <option value="">None</option>
+                </select>
+                <button type="submit">Save Note</button>
+            </form>
+            <ul id="note-list" aria-live="polite"></ul>
+        </section>
+    </main>
+    <footer>
+        <button id="export-btn">Export Data</button>
+        <input type="file" id="import-file" accept=".json" style="display: none;" aria-label="Import file input">
+        <button id="import-btn">Import Data</button>
+    </footer>
+    <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal-content">
+            <span id="modal-close" class="modal-close" aria-label="Close modal">×</span>
+            <div id="email-view-content">
+                <h3 id="email-view-title"></h3>
+                <p id="email-view-category"></p>
+                <pre id="email-view-template"></pre>
+                <button id="email-view-copy">Copy</button>
+                <button id="email-view-edit">Edit</button>
+            </div>
+            <div id="email-edit-content">
+                <label for="email-edit-title">Title:</label>
+                <input type="text" id="email-edit-title">
+                <label for="email-edit-category">Category:</label>
+                <input type="text" id="email-edit-category">
+                <label for="email-edit-template">Template:</label>
+                <textarea id="email-edit-template"></textarea>
+                <button id="email-edit-save">Save</button>
+                <button id="email-edit-cancel">Cancel</button>
+            </div>
+            <div id="contact-view-content">
+                <h3 id="contact-view-name"></h3>
+                <p id="contact-view-email"></p>
+                <p id="contact-view-phone"></p>
+                <p id="contact-view-address"></p>
+                <button id="contact-view-edit">Edit</button>
+            </div>
+            <div id="contact-edit-content">
+                <label for="contact-edit-name">Name:</label>
+                <input type="text" id="contact-edit-name">
+                <label for="contact-edit-email">Email:</label>
+                <input type="email" id="contact-edit-email">
+                <label for="contact-edit-phone">Phone:</label>
+                <input type="tel" id="contact-edit-phone">
+                <label for="contact-edit-address">Address:</label>
+                <input type="text" id="contact-edit-address">
+                <button id="contact-edit-save">Save</button>
+                <button id="contact-edit-cancel">Cancel</button>
+            </div>
+            <div id="project-view-content">
+                <h3 id="project-view-name"></h3>
+                <p id="project-view-description"></p>
+                <p id="project-view-start"></p>
+                <p id="project-view-status"></p>
+                <p id="project-view-contact"></p>
+                <div id="project-view-tasks"></div>
+                <div id="project-view-reminders"></div>
+                <button id="project-view-edit">Edit</button>
+            </div>
+            <div id="project-edit-content">
+                <label for="project-edit-name">Name:</label>
+                <input type="text" id="project-edit-name">
+                <label for="project-edit-description">Description:</label>
+                <textarea id="project-edit-description"></textarea>
+                <label for="project-edit-start">Start Date:</label>
+                <input type="date" id="project-edit-start">
+                <label for="project-edit-status">Status:</label>
+                <select id="project-edit-status">
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                </select>
+                <label for="project-edit-contact">Link to Contact:</label>
+                <select id="project-edit-contact">
+                    <option value="">None</option>
+                </select>
+                <div id="project-edit-tasks"></div>
+                <button id="project-add-task">Add Task</button>
+                <div id="project-edit-reminders"></div>
+                <button id="project-add-reminder">Add Reminder</button>
+                <button id="project-edit-save">Save</button>
+                <button id="project-edit-cancel">Cancel</button>
+            </div>
+            <div id="note-view-content">
+                <h3 id="note-view-title"></h3>
+                <pre id="note-view-content-text"></pre>
+                <p id="note-view-contact"></p>
+                <button id="note-view-copy">Copy</button>
+                <button id="note-view-edit">Edit</button>
+            </div>
+            <div id="note-edit-content">
+                <label for="note-edit-title">Title:</label>
+                <input type="text" id="note-edit-title">
+                <label for="note-edit-content">Content:</label>
+                <textarea id="note-edit-content"></textarea>
+                <label for="note-edit-contact">Link to Contact:</label>
+                <select id="note-edit-contact">
+                    <option value="">None</option>
+                </select>
+                <button id="note-edit-save">Save</button>
+                <button id="note-edit-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
