@@ -1,0 +1,491 @@
+<!--
+  portable-project-manager.html
+  =============================================
+  Single‑file, offline‑ready project & task manager
+  • Calendar navigation (‹ Prev / Next ›)
+  • Better calendar contrast
+  • Tasks with assignee, due, notes, timer, JSON import/export, themes
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portable Project Manager</title>
+  <style>
+    /* ============ TOKENS ============ */
+    :root {
+      --bg: #f6f7fa;
+      --surface: #ffffff;
+      --surface-alt: #f0f2f7;
+      --accent: #3b82f6;
+      --accent-dark: #2563eb;
+      --danger: #ef4444;
+      --text: #1f2937;
+      --text-light: #6b7280;
+      --border: #e5e7eb;
+    }
+    [data-theme="dark"] {
+      --bg: #374151;
+      --surface: #1f2937;
+      --surface-alt: #374151;
+      --accent: #60a5fa;
+      --accent-dark: #3b82f6;
+      --danger: #f87171;
+      --text: #f3f4f6;
+      --text-light: #9ca3af;
+      --border: #374151;
+    }
+    /* ============ BASE ============ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 { margin: 0; font-weight: 600; }
+    button, input, textarea { font-family: inherit; font-size: 1rem; }
+
+    /* ============ HEADER ============ */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .6rem;
+      padding: .8rem 1rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .header-actions { display: flex; gap: .4rem; }
+    .btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .4rem .8rem;
+      cursor: pointer;
+      font-size: .85rem;
+      color: var(--text-light);
+    }
+    .btn:hover { background: var(--surface-alt); color: var(--text); }
+
+    /* ============ LAYOUT ============ */
+    .app { display: flex; height: calc(100% - 70px); }
+    aside {
+      width: 284px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding-right: 8px;
+      padding-left: 8px;
+    }
+    main { flex: 1; padding: 1rem; background: var(--surface-alt); overflow-y: auto; }
+    @media(max-width:700px) {
+      .app { flex-direction: column; }
+      aside { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    }
+
+    /* ============ FORMS ============ */
+    form { display: flex; flex-wrap: wrap; gap: .5rem; margin: .8rem 0; }
+    form input { flex: 1 1 140px; padding: .55rem .65rem; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text); }
+    form button { padding: .55rem .9rem; background: var(--accent); border: none; border-radius: 5px; color: #fff; font-weight: 600; cursor: pointer; }
+    form button:hover { background: var(--accent-dark); }
+
+    /* ============ PROJECT LIST ============ */
+    #projectList { list-style: none; margin: 0; padding: 0; flex: 1; overflow-y: auto; }
+    #projectList li { padding: .65rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; cursor: pointer; }
+    #projectList li:hover { background: var(--surface-alt); }
+    #projectList li.active { background: var(--accent); color: #fff; }
+
+    /* ============ TASK LIST ============ */
+    #taskList { list-style: none; margin: 0; padding: 0; }
+    #taskList li { padding: .65rem .75rem; margin-bottom: .45rem; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; display: flex; justify-content: space-between; gap: .8rem; }
+    .task-left { display: flex; gap: .6rem; flex: 1; }
+    .task-left input { margin-top: .3rem; accent-color: var(--accent); }
+    .task-meta { font-size: .8rem; color: var(--text-light); display: flex; gap: .4rem; flex-wrap: wrap; }
+    .task-meta .danger { color: var(--danger); font-weight: 700; }
+
+    /* ============ CALENDAR ============ */
+    .calendar-nav { display: flex; align-items: center; gap: .5rem; margin-top: 2rem; margin-bottom: .25rem; }
+    .cal-btn { border: none; background: none; font-size: 1.1rem; cursor: pointer; color: var(--text-light); }
+    .cal-btn:hover { color: var(--text); }
+    #monthLabel { font-weight: 600; }
+
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); font-size: .8rem; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .calendar-header { background: var(--surface-alt); text-align: center; padding: .4rem 0; font-weight: 600; border-right: 1px solid var(--border); }
+    .calendar-header:last-child { border-right: none; }
+    .calendar-day { min-height: 74px; padding: .42rem; border-top: 1px solid var(--border); border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; color: var(--text); }
+    .calendar-day:nth-child(7n) { border-right: none; }
+    .calendar-day.placeholder { background: var(--surface-alt); color: var(--text-light); }
+    .calendar-day.overdue { background: #f871714f; }
+    .calendar-day .date { font-weight: 600; font-size: .78rem; margin-bottom: .2rem; }
+    .task-badge { font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .task-badge.danger { color: var(--danger); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Portable Project Manager</h1>
+    <div class="header-actions">
+      <button id="exportBtn" class="btn">Export JSON</button>
+      <button id="importBtn" class="btn">Import JSON</button>
+      <button id="themeToggle" class="btn" aria-label="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <div class="app">
+    <aside>
+      <form id="newProjectForm">
+        <input id="projectNameInput" placeholder="Add project…" required />
+        <button type="submit">＋</button>
+      </form>
+      <ul id="projectList"></ul>
+    </aside>
+
+    <main>
+      <h2 id="projectTitle">Select a project…</h2>
+      <form id="newTaskForm" style="display:none">
+        <input id="taskTitleInput" placeholder="Task title" required />
+        <input id="taskAssigneeInput" placeholder="Assignee" />
+        <input id="taskDueInput" type="date" />
+        <input id="taskNotesInput" placeholder="Notes" />
+        <button type="submit">＋</button>
+      </form>
+      <ul id="taskList"></ul>
+      <p id="emptyState" class="empty"></p>
+
+      <div class="calendar-nav">
+        <button id="prevMonth" class="cal-btn" aria-label="Previous month">‹</button>
+        <span id="monthLabel"></span>
+        <button id="nextMonth" class="cal-btn" aria-label="Next month">›</button>
+      </div>
+      <div id="calendar" class="calendar" aria-label="Task calendar"></div>
+    </main>
+  </div>
+
+  <input type="file" id="importFile" accept="application/json" style="display:none" />
+
+  <script>
+    // ==================== STATE & HELPERS ====================
+    if (!('randomUUID' in crypto)) {
+      crypto.randomUUID = () => ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+    }
+
+    const STORAGE_KEY = 'pmData';
+    const THEME_KEY = 'pmTheme';
+    let store = { projects: [] };
+    let selectedProjectId = null;
+
+    // calendar view month/year
+    let viewDate = new Date();
+    let viewMonth = viewDate.getMonth();
+    let viewYear = viewDate.getFullYear();
+
+    const $ = id => document.getElementById(id);
+    const root = document.documentElement;
+
+    const todayStr = () => new Date().toISOString().slice(0, 10);
+    const isOverdue = d => d && d < todayStr();
+    const formatDur = s => {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+      return h ? `${h}h ${m}m` : `${m}m`;
+    };
+    const nowSec = () => Date.now() / 1000;
+
+    const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    const load = () => {
+      try {
+        const d = localStorage.getItem(STORAGE_KEY);
+        if (d) store = JSON.parse(d);
+      } catch { }
+    };
+
+    // ==================== RENDER FUNCTIONS ====================
+    function renderProjects() {
+      const ul = $('projectList');
+      ul.innerHTML = '';
+      store.projects.forEach(p => {
+        const li = document.createElement('li');
+        li.dataset.id = p.id;
+        li.classList.toggle('active', p.id === selectedProjectId);
+        li.innerHTML = `<span>${p.name}</span><button aria-label="Delete project">✕</button>`;
+        ul.appendChild(li);
+      });
+    }
+
+    function renderTasks() {
+      const proj = store.projects.find(p => p.id === selectedProjectId);
+      $('taskList').innerHTML = '';
+
+      if (!proj) {
+        $('projectTitle').textContent = 'Select a project…';
+        $('newTaskForm').style.display = 'none';
+        $('emptyState').textContent = '';
+        renderCalendar([]);
+        return;
+      }
+
+      $('projectTitle').textContent = proj.name;
+      $('newTaskForm').style.display = '';
+
+      if (!proj.tasks.length) {
+        $('emptyState').textContent = 'No tasks yet';
+        renderCalendar([]);
+        return;
+      }
+      $('emptyState').textContent = '';
+
+      const ordered = [...proj.tasks].sort((a, b) => {
+        const aKey = (isOverdue(a.due) || a.due === todayStr()) ? 0 : 1;
+        const bKey = (isOverdue(b.due) || b.due === todayStr()) ? 0 : 1;
+        if (aKey !== bKey) return aKey - bKey;
+        return (a.due || '').localeCompare(b.due || '');
+      });
+
+      ordered.forEach(t => {
+        const running = !!t.runningStart;
+        const total = Math.floor(t.spent + (running ? nowSec() - t.runningStart : 0));
+
+        const li = document.createElement('li');
+        li.dataset.id = t.id;
+        li.innerHTML = `
+          <div class="task-left">
+            <input type="checkbox" ${t.done ? 'checked' : ''} />
+            <div>
+              <span>${t.title}</span>
+              <div class="task-meta">
+                ${t.assignee ? `👤 ${t.assignee}` : ''}
+                ${t.due ? `• 📅 <span class="${isOverdue(t.due) || t.due === todayStr() ? 'danger' : ''}">${t.due}</span>` : ''}
+                • ⏱ ${formatDur(total)} ${running ? '<em>(running)</em>' : ''}
+              </div>
+              ${t.notes ? `<div class="task-notes">${t.notes}</div>` : ''}
+            </div>
+          </div>
+          <div class="task-actions">
+            <button class="timer" aria-label="Start/stop timer">${running ? '⏸' : '▶️'}</button>
+            <button class="add-time" aria-label="Add manual time">＋⏱</button>
+            <button class="edit" aria-label="Edit task">✎</button>
+            <button class="delete" aria-label="Delete task">✕</button>
+          </div>`;
+        $('taskList').appendChild(li);
+      });
+
+      renderCalendar(proj.tasks);
+    }
+
+    function renderCalendar(tasks) {
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      $('monthLabel').textContent = `${monthNames[viewMonth]} ${viewYear}`;
+
+      const cal = $('calendar');
+      cal.innerHTML = '';
+
+      // Headers
+      ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(h => {
+        const hd = document.createElement('div');
+        hd.textContent = h;
+        hd.className = 'calendar-header';
+        cal.appendChild(hd);
+      });
+
+      const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+      const dim = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      const tasksByDate = {};
+      tasks.filter(t => t.due).forEach(t => {
+        (tasksByDate[t.due] = tasksByDate[t.due] || []).push(t);
+      });
+
+      // Leading placeholders
+      for (let i = 0; i < firstDow; i++) {
+        const ph = document.createElement('div');
+        ph.className = 'calendar-day placeholder';
+        cal.appendChild(ph);
+      }
+
+      // Actual days
+      for (let d = 1; d <= dim; d++) {
+        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day';
+        if (isOverdue(dateStr) || dateStr === todayStr()) cell.classList.add('overdue');
+        cell.innerHTML = `<span class="date">${d}</span>`;
+
+        (tasksByDate[dateStr] || []).forEach(t => {
+          const badge = document.createElement('span');
+          badge.className = 'task-badge';
+          if (isOverdue(dateStr) || dateStr === todayStr()) badge.classList.add('danger');
+          badge.textContent = t.title;
+          cell.appendChild(badge);
+        });
+        cal.appendChild(cell);
+      }
+    }
+
+    // ==================== INIT THEME ====================
+    (() => {
+      const t = localStorage.getItem(THEME_KEY) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      root.dataset.theme = t;
+      $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙';
+    })();
+
+    $('themeToggle').addEventListener('click', () => {
+      const n = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = n;
+      $('themeToggle').textContent = n === 'dark' ? '☀️' : '🌙';
+      localStorage.setItem(THEME_KEY, n);
+    });
+
+    // ==================== PROJECT HANDLERS ====================
+    $('newProjectForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const name = $('projectNameInput').value.trim();
+      if (!name) return;
+      const id = crypto.randomUUID();
+      store.projects.push({ id, name, tasks: [] });
+      selectedProjectId = id;
+      $('projectNameInput').value = '';
+      save();
+      renderProjects();
+      renderTasks();
+    });
+
+    $('projectList').addEventListener('click', e => {
+      const li = e.target.closest('li');
+      if (!li) return;
+      const id = li.dataset.id;
+      if (e.target.tagName === 'BUTTON') {
+        if (confirm('Delete project?')) {
+          store.projects = store.projects.filter(p => p.id !== id);
+          if (selectedProjectId === id) selectedProjectId = null;
+          save();
+          renderProjects();
+          renderTasks();
+        }
+      } else {
+        selectedProjectId = id;
+        renderProjects();
+        renderTasks();
+      }
+    });
+
+    // ==================== TASK HANDLERS ====================
+    $('newTaskForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const title = $('taskTitleInput').value.trim();
+      if (!title) return;
+      const proj = store.projects.find(p => p.id === selectedProjectId);
+      proj.tasks.push({
+        id: crypto.randomUUID(),
+        title,
+        assignee: $('taskAssigneeInput').value.trim(),
+        due: $('taskDueInput').value,
+        notes: $('taskNotesInput').value.trim(),
+        done: false,
+        spent: 0,
+        runningStart: null
+      });
+      ['taskTitleInput', 'taskAssigneeInput', 'taskDueInput', 'taskNotesInput'].forEach(i => $(i).value = '');
+      save();
+      renderTasks();
+    });
+
+    $('taskList').addEventListener('click', e => {
+      const li = e.target.closest('li');
+      if (!li) return;
+      const proj = store.projects.find(p => p.id === selectedProjectId);
+      const task = proj.tasks.find(t => t.id === li.dataset.id);
+
+      if (e.target.classList.contains('delete')) {
+        if (confirm('Delete task?')) proj.tasks = proj.tasks.filter(t => t !== task);
+      } else if (e.target.classList.contains('edit')) {
+        const title = prompt('Title', task.title);
+        if (title !== null) task.title = title;
+      } else if (e.target.classList.contains('timer')) {
+        if (task.runningStart) {
+          task.spent += Math.floor(nowSec() - task.runningStart);
+          task.runningStart = null;
+        } else {
+          task.runningStart = nowSec();
+        }
+      } else if (e.target.classList.contains('add-time')) {
+        const mins = parseInt(prompt('Add minutes:'), 10);
+        if (mins > 0) task.spent += mins * 60;
+      }
+      save();
+      renderTasks();
+    });
+
+    $('taskList').addEventListener('change', e => {
+      if (e.target.type === 'checkbox') {
+        const li = e.target.closest('li');
+        const proj = store.projects.find(p => p.id === selectedProjectId);
+        const task = proj.tasks.find(t => t.id === li.dataset.id);
+        task.done = e.target.checked;
+        save();
+        renderTasks();
+      }
+    });
+
+    // Auto refresh running timers
+    setInterval(() => {
+      if (store.projects.some(p => p.tasks.some(t => t.runningStart))) renderTasks();
+    }, 30000);
+
+    // ==================== CALENDAR NAV ====================
+    function shiftMonth(offset) {
+      viewMonth += offset;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      const proj = store.projects.find(p => p.id === selectedProjectId);
+      renderCalendar(proj ? proj.tasks : []);
+    }
+    $('prevMonth').addEventListener('click', () => shiftMonth(-1));
+    $('nextMonth').addEventListener('click', () => shiftMonth(1));
+
+    // ==================== IMPORT / EXPORT ====================
+    $('exportBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'project-data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    $('importBtn').addEventListener('click', () => $('importFile').click());
+    $('importFile').addEventListener('change', () => {
+      const file = $('importFile').files[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (confirm('Replace current data with imported data?')) {
+            store = data;
+            selectedProjectId = data.projects[0]?.id || null;
+            save();
+            renderProjects();
+            renderTasks();
+          }
+        } catch {
+          alert('Invalid JSON file.');
+        }
+      };
+      r.readAsText(file);
+    });
+
+    // ==================== INIT ====================
+    (function init() {
+      load();
+      if (store.projects.length) selectedProjectId = store.projects[0].id;
+      renderProjects();
+      renderTasks();
+    })();
+  </script>
+</body>
+</html>
